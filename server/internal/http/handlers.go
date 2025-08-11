@@ -21,6 +21,10 @@ type joinReq struct {
 	Name string `json:"name"`
 }
 
+type leaveReq struct {
+	ID string `json:"id"`
+}
+
 func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	var req createRoomReq
 
@@ -74,5 +78,26 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(player)
+
+}
+
+func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
+	roomCode := chi.URLParam(r, "code")
+
+	var req leaveReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "cannot leave room", http.StatusBadRequest)
+		return
+	}
+
+	room, ok := h.Ref.DropPlayer(roomCode, req.ID)
+	if !ok {
+		http.Error(w, "failed to drop player", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(room)
 
 }

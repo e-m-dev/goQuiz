@@ -89,28 +89,39 @@ func (s *Store) JoinRoom(code string, playerName string) (Player, bool) {
 
 }
 
-func (s *Store) DropPlayer(code string, id string) {
+func (s *Store) DropPlayer(code string, id string) (Room, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	room, ok := s.rooms[code]
 	if !ok {
-		return
+		return Room{}, false
 	}
 
-	for _, p := range room.Players {
-		if strings.EqualFold(p.ID, id) {
-			// drop player -- check host make next user host
-			//room.Players =
+	for i := range room.Players {
+
+		if room.Players[i].ID == id {
+			wasHost := room.Players[i].Host
+
+			room.Players = append(room.Players[:i], room.Players[i+1:]...)
+
+			if len(room.Players) <= 0 {
+				delete(s.rooms, code)
+				return Room{}, true
+			}
+
+			if wasHost {
+				room.Players[0].Host = true
+			}
+
+			s.rooms[code] = room
+			return room, true
 		}
-	}
 
-	if len(room.Players) <= 0 {
-		//delete room
 	}
 
 	s.rooms[code] = room
-
+	return room, false
 }
 
 func randomCode(n int) string {
