@@ -1,19 +1,18 @@
 package main
 
 import (
+	internHttp "goQuiz/server/internal/http"
+	"goQuiz/server/internal/store"
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/go-chi/chi/v5"
 )
 
 func main() {
-	r := chi.NewRouter()
+	s := store.NewStore()
+	h := &internHttp.Handler{Ref: s}
 
-	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("ok"))
-	})
+	r := internHttp.NewRouter(h)
 
 	port := os.Getenv("PORT")
 	if port == "" {
