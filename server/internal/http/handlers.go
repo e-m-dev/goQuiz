@@ -3,14 +3,18 @@ package http
 import (
 	"encoding/json"
 	"goQuiz/server/internal/store"
+	"goQuiz/server/internal/ws"
+	wsHub "goQuiz/server/internal/ws"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"nhooyr.io/websocket"
 )
 
 type Handler struct {
 	Ref *store.Store
+	Hub *wsHub.Hub
 }
 
 type createRoomReq struct {
@@ -21,7 +25,7 @@ type joinReq struct {
 	Name string `json:"name"`
 }
 
-type leaveReq struct {
+type idReq struct {
 	ID string `json:"id"`
 }
 
@@ -84,7 +88,7 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomCode := chi.URLParam(r, "code")
 
-	var req leaveReq
+	var req idReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "cannot leave room", http.StatusBadRequest)
 		return
@@ -99,5 +103,36 @@ func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(room)
+
+}
+
+func (h *Handler) WSHandler(w http.ResponseWriter, r *http.Request) {
+	roomCode := chi.URLParam(r, "code")
+
+	playerID := r.URL.Query().Get("playerId")
+	if strings.TrimSpace(playerID) == "" {
+		http.Error(w, "missing playerId", http.StatusBadRequest)
+		return
+	}
+
+	_, ok := h.Ref.GetRoom(roomCode)
+	if !ok {
+		http.Error(w, "room doesnt exist", http.StatusNotFound)
+		return
+	}
+
+	wsConn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		http.Error(w, "failed to upgrade to ws", http.StatusBadRequest)
+		return
+	}
+
+	c := ws.NewConn(wsConn)
+	h.Hub.Add(roomCode, playerID, c)
+
+	go c.WriteLoop()
+
+	c.ReadLoop(h.Hub, roomCode, playerID)
+	h.Hub.Remove(roomCode, playerID)
 
 }

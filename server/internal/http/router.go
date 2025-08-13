@@ -8,5 +8,6 @@ func NewRouter(h *Handler) *chi.Mux {
 	r.Get("/rooms/{code}", h.GetRoomHandler)
 	r.Post("/rooms/{code}/join", h.JoinRoomHandler)
 	r.Post("/rooms/{code}/leave", h.LeaveRoomHandler)
+	r.Get("/ws/{code}", h.WSHandler)
 	return r
 }
