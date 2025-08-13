@@ -14,6 +14,7 @@ const FormJoinRoom: React.FC = () => {
     }
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         try {
             const data = await joinRoom(roomCode, playerName);
             console.log(data);
