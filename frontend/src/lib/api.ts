@@ -8,12 +8,12 @@ export async function createRoom(name: string) {
     return res.json();
 }
 
-export async function joinRoom(code: string, playerName: string) {
+export async function joinRoom(code: string, Name: string) {
     const safeCode = encodeURIComponent(code.trim().toUpperCase());
     const res = await fetch(`http://localhost:8080/rooms/${safeCode}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName })
+        body: JSON.stringify({ Name })
     });
     if(!res.ok) {
         throw new Error((await res.text()) || 'Failed to join room');
