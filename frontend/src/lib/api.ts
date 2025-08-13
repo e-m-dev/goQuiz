@@ -8,7 +8,7 @@ export async function createRoom(name: string) {
     return res.json();
 }
 
-export async function JoinRoom(code: string, playerName: string) {
+export async function joinRoom(code: string, playerName: string) {
     const safeCode = encodeURIComponent(code.trim().toUpperCase());
     const res = await fetch(`http://localhost:8080/rooms/${safeCode}/join`, {
         method: 'POST',
