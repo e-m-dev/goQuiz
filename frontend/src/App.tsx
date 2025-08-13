@@ -1,10 +1,14 @@
 import './App.css'
 import FormCreateRoom from './components/FormCreateRoom'
+import FormJoinRoom from './components/FormJoinRoom'
 
 function App() {
 
   return (
-    <FormCreateRoom></FormCreateRoom>
+    <div>
+      <FormCreateRoom></FormCreateRoom>
+      <FormJoinRoom></FormJoinRoom>
+    </div>
   )
 }
 
