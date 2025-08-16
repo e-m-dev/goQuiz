@@ -1,16 +1,19 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import './App.css'
+import Landing from './components/Landing'
 import FormCreateRoom from './components/FormCreateRoom'
 import FormJoinRoom from './components/FormJoinRoom'
-import Landing from './components/Landing'
 
 function App() {
 
   return (
-    <div>
-      <Landing></Landing>
-      <FormCreateRoom></FormCreateRoom>
-      <FormJoinRoom></FormJoinRoom>
-    </div>
+    <Router>
+      <Routes>
+        <Route path='/' element={<Landing />} />
+        <Route path='/create' element={<FormCreateRoom />} />
+        <Route path='/join' element={<FormJoinRoom />} />
+      </Routes>
+    </Router>
   )
 }
 
