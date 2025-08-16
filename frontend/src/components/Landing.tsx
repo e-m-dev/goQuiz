@@ -1,16 +1,14 @@
 import { useLocalStorage } from '@uidotdev/usehooks';
+import { useNavigate } from 'react-router-dom';
 import React from 'react';
 import ActionButton from './ActionButton';
 
 const Landing: React.FC = () => {
     const [name, saveName] = useLocalStorage("playerName", '');
+    const navigate = useNavigate();
 
     const handleName = (event: React.ChangeEvent<HTMLInputElement>) => {
         saveName(event.target.value);
-    }
-
-    const navigate = (path: string) => {
-
     }
 
     return (
