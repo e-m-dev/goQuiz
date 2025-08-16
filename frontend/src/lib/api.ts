@@ -20,3 +20,15 @@ export async function joinRoom(code: string, Name: string) {
     }
     return res.json();
 }
+
+export async function getRoom(code: string) {
+    const safeCode = encodeURIComponent(code.trim().toUpperCase());
+    const res = await fetch(`http://localhost:8080/rooms/${safeCode}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+    });
+    if(!res.ok) {
+        throw new Error((await res.text()) || 'Failed to get room');
+    }
+    return res.json();
+}

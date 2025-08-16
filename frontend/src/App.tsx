@@ -3,6 +3,7 @@ import './App.css'
 import Landing from './components/Landing'
 import FormCreateRoom from './components/FormCreateRoom'
 import FormJoinRoom from './components/FormJoinRoom'
+import Lobby from './components/Lobby'
 
 function App() {
 
@@ -12,6 +13,7 @@ function App() {
         <Route path='/' element={<Landing />} />
         <Route path='/create' element={<FormCreateRoom />} />
         <Route path='/join' element={<FormJoinRoom />} />
+        <Route path='/room' element={<Lobby />} />
       </Routes>
     </Router>
   )
