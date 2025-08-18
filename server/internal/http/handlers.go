@@ -29,6 +29,10 @@ type idReq struct {
 	ID string `json:"id"`
 }
 
+type lobby struct {
+	Players []store.Player `json:"players"`
+}
+
 func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	var req createRoomReq
 
@@ -61,7 +65,7 @@ func (h *Handler) GetRoomHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomCode := chi.URLParam(r, "code")
 
-	_, ok := h.Ref.GetRoom(roomCode)
+	room, ok := h.Ref.GetRoom(roomCode)
 	if !ok {
 		http.Error(w, "invalid/room not found on join", http.StatusNotFound)
 		return
@@ -83,6 +87,15 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(player)
 
+	lobby := lobby{Players: room.Players}
+	bytes, err := json.Marshal(lobby)
+	if err != nil {
+		http.Error(w, "failed to marshal lobby data", http.StatusNotFound)
+		return
+	}
+
+	h.Hub.Broadcast(roomCode, bytes)
+
 }
 
 func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +116,15 @@ func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(room)
+
+	lobby := lobby{Players: room.Players}
+	bytes, err := json.Marshal(lobby)
+	if err != nil {
+		http.Error(w, "failed to marshal lobby data/bum drop player", http.StatusNotFound)
+		return
+	}
+
+	h.Hub.Broadcast(roomCode, bytes)
 
 }
 
