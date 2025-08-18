@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { createRoom } from '../lib/api';
 import { Button } from './ui/button';
+import { Input } from "./ui/input";
+import { Label } from './ui/label';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 
 const FormCreateRoom: React.FC = () => {
     const [roomCode, setRoomCode] = useState('');
@@ -23,31 +26,32 @@ const FormCreateRoom: React.FC = () => {
     }
 
     return (
-        <div className="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-                <h5 className="text-xl font-medium text-gray-900 dark:text-white">Create Room</h5>
-                <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Room Name</label>
-                    <input type="text" value={roomName} onChange={handleChange} name="rName" id="rName" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" placeholder="Friday Pub Quiz" required />
-                </div>
-                <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Round Options, Coming Soon</label>
-                    <input type="text" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
-                </div>
-                <div className="flex items-start">
-                    <div className="flex items-start">
-                        <div className="flex items-center h-5">
-                            <input id="remember" type="checkbox" value="" className="w-4 h-4 border border-gray-300 rounded-sm bg-gray-50 focus:ring-3 focus:ring-blue-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:focus:ring-offset-gray-800" />
+        <div className='min-h-dvh grid place-items-center p-4'>
+            <Card className='w-full max-w-sm'>
+                <CardHeader>
+                    <CardTitle>Create Room</CardTitle>
+                    <CardDescription>
+                        Enter the room details to create!
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form className="space-y-4" onSubmit={handleSubmit}>
+                        <Label>Room Name</Label>
+                        <Input type="text" value={roomName} onChange={handleChange} required />
+                        <div className='flex justify-center gap-2'>
+                            <Button type="submit">Create Room</Button>
                         </div>
-                        <label className="ms-2 text-sm font-medium text-gray-900 dark:text-gray-300">Do Something</label>
-                    </div>
-                </div>
-                <Button type="submit" >Create Room</Button>
-            </form>
-            <div className="block max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                <h5 className="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Room Details</h5>
-                <p className="font-normal text-gray-700 dark:text-gray-400">{roomCode}</p>
-            </div>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Room Details</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p>{roomCode}</p>
+                            </CardContent>
+                        </Card>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
 };
