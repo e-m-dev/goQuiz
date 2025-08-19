@@ -67,27 +67,33 @@ func NewConn(ws *websocket.Conn) *Conn {
 	}
 }
 
-func (c *Conn) WriteLoop() {
-	for msg := range c.send {
-		if err := c.ws.Write(context.Background(), websocket.MessageText, msg); err != nil {
-			break
+func (c *Conn) WriteLoop(ctx context.Context) {
+	defer func() { _ = c.ws.Close(websocket.StatusNormalClosure, "writer closed") }()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-c.send:
+			if !ok {
+				return
+			}
+			if err := c.ws.Write(ctx, websocket.MessageText, msg); err != nil {
+				return
+			}
 		}
 	}
-	_ = c.ws.Close(websocket.StatusNormalClosure, "")
 }
 
-func (c *Conn) ReadLoop(hub *Hub, roomCode string, playerID string) {
+func (c *Conn) ReadLoop(ctx context.Context, hub *Hub, roomCode string, playerID string) {
+	defer close(c.send)
 	for {
-		typ, msg, err := c.ws.Read(context.Background())
+		typ, msg, err := c.ws.Read(ctx)
 		if err != nil {
-			break
+			return
 		}
 
-		if typ != websocket.MessageText {
-			continue
+		if typ == websocket.MessageText {
+			hub.Broadcast(roomCode, msg)
 		}
-		hub.Broadcast(roomCode, msg)
 	}
-	_ = c.ws.Close(websocket.StatusNormalClosure, "")
-	close(c.send)
 }

@@ -5,6 +5,7 @@ import (
 	"goQuiz/server/internal/store"
 	"goQuiz/server/internal/ws"
 	wsHub "goQuiz/server/internal/ws"
+	"log"
 	"net/http"
 	"strings"
 
@@ -143,18 +144,19 @@ func (h *Handler) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wsConn, err := websocket.Accept(w, r, nil)
+	wsConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 	if err != nil {
-		http.Error(w, "failed to upgrade to ws", http.StatusBadRequest)
+		log.Printf("ws accept failed: &v", err)
 		return
 	}
 
 	c := ws.NewConn(wsConn)
 	h.Hub.Add(roomCode, playerID, c)
 
-	go c.WriteLoop()
+	ctx := r.Context()
+	go c.WriteLoop(ctx)
+	c.ReadLoop(ctx, h.Hub, roomCode, playerID)
 
-	c.ReadLoop(h.Hub, roomCode, playerID)
 	h.Hub.Remove(roomCode, playerID)
 
 }
