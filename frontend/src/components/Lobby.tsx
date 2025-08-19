@@ -1,8 +1,9 @@
 import { useLocalStorage } from '@uidotdev/usehooks';
 import React, { useEffect, useState } from 'react';
 import { getRoom } from '../lib/api';
-/*
+import { getWS } from '@/lib/WS';
 import { Button } from './ui/button';
+/*
 import { Input } from "./ui/input";
 import { Label } from './ui/label';
 */
@@ -11,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/
 const Lobby: React.FC= () => {
     type Session = { roomCode: string, playerId: string };
     type Player = { id: string, name: string, host: boolean };
+
     const [session] = useLocalStorage<Session | null>("session", null);
     const [playerName] = useLocalStorage("playerName", null);
     const [players, setPlayers] = useState<Player[]>([]);
@@ -30,29 +32,12 @@ const Lobby: React.FC= () => {
 
     useEffect(() => {
         if(!session) return;
-
-        const ws = new WebSocket(`ws://localhost:8080/ws/${session.roomCode}?playerId=${session.playerId}`);
-
-        ws.onopen = () => {
-            console.log("WS Connected");
-            ws.send("connection");
-        };
-
-        ws.onmessage = (event) => {
-            console.log("server message:", event.data);
-        };
-
-        ws.onclose = () => {
-            console.log("WS Closed");
-        };
-
-        ws.onerror = (err) => {
-            console.error("WS Error", err);
-        };
-
-        return () => ws.close();
-
+        getWS(`ws://localhost:8080/ws/${session.roomCode}?playerId=${session.playerId}`);
     }, [session]);
+
+    const handleLeave = () => {
+
+    };
 
 
     return (
@@ -75,8 +60,10 @@ const Lobby: React.FC= () => {
                                         {player.name} (ID: {player.id}) {player.host ? 'Host' : ''}
                                     </li>
                                 ))}
+                                <Button variant={'destructive'} onClick={handleLeave}>Leave</Button>
                             </ul>
                         )}
+                        
                     </div>
                 </CardContent>
             </Card>
