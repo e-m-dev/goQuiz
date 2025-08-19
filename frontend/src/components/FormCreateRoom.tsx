@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createRoom } from '../lib/api';
+import { joinRoom } from '../lib/api';
 import { Button } from './ui/button';
 import { Input } from "./ui/input";
 import { Label } from './ui/label';
@@ -15,6 +16,7 @@ const FormCreateRoom: React.FC = () => {
             const data = await createRoom(roomName);
             console.log('Created Room:', data);
             setRoomCode(data.code);
+            //TODO: join and navigate to room
         } catch (error) {
             console.error(error);
         }

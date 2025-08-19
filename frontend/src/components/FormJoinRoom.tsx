@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { joinRoom } from "../lib/api";
 import { useLocalStorage } from "@uidotdev/usehooks";
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 
 const FormJoinRoom: React.FC = () => {
+    const navigate = useNavigate();
     const [roomCode, setRoomCode] = useState('');
     const [session, setSession] = useLocalStorage("session", { roomCode: "", playerId: "" });
     const playerName = localStorage.getItem("playerName") || '';
@@ -19,6 +21,7 @@ const FormJoinRoom: React.FC = () => {
         try {
             const data = await joinRoom(roomCode, playerName);
             setSession({ roomCode, playerId: data.id });
+            navigate("/room");
             console.log(data);
         } catch (error) {
             console.log(error);
