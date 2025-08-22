@@ -78,11 +78,15 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("JOIN start code=%s name=%s", roomCode, req.Name)
+
 	player, ok := h.Ref.JoinRoom(roomCode, req.Name)
 	if !ok {
 		http.Error(w, "cannot join room", http.StatusNotFound)
 		return
 	}
+
+	log.Printf("JOIN ok code=%s id=%s name=%s", roomCode, player.ID, player.Name)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -108,11 +112,15 @@ func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("LEAVE start code=%s id=%s", roomCode, req.ID)
+
 	room, ok := h.Ref.DropPlayer(roomCode, req.ID)
 	if !ok {
 		http.Error(w, "failed to drop player", http.StatusNotFound)
 		return
 	}
+
+	log.Printf("LEAVE ok code=%s remaining players=%d", roomCode, len(room.Players))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
