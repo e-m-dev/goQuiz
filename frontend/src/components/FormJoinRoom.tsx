@@ -10,7 +10,8 @@ const FormJoinRoom: React.FC = () => {
     const navigate = useNavigate();
     const [roomCode, setRoomCode] = useState('');
     const [session, setSession] = useLocalStorage("session", { roomCode: "", playerId: "" });
-    const playerName = localStorage.getItem("playerName") || '';
+    const rawName = localStorage.getItem("playerName");
+    const playerName = rawName ? JSON.parse(rawName) : "";      // Strip JSON encoding from useLocalStorage hook -> Backend expects raw string
 
     const handleRoom = (event: React.ChangeEvent<HTMLInputElement>) => {
         setRoomCode(event.target.value);
