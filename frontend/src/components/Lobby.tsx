@@ -62,7 +62,7 @@ const Lobby: React.FC= () => {
                             <ul>
                                 {players.map((player) => (
                                     <li key={player.id}>
-                                        {player.name} (ID: {player.id}) {player.host ? 'Host' : ''}
+                                        {player.name} {player.host ? 'Host' : ''}
                                     </li>
                                 ))}
                                 <li><Button variant={'destructive'} onClick={handleLeave}>Leave</Button></li>
