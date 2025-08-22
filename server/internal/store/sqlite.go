@@ -9,7 +9,7 @@ import (
 type Player struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	Host bool
+	Host bool   `json:"host"`
 }
 
 type Room struct {

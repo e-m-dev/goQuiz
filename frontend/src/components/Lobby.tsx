@@ -1,7 +1,7 @@
 import { useLocalStorage } from '@uidotdev/usehooks';
 import React, { useEffect, useState } from 'react';
 import { getRoom, leaveRoom } from '../lib/api';
-import { allowWS, closeWS, getWS } from '@/lib/WS';
+import { allowWS, closeWS, getWS } from '@/lib/ws';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
 /*
