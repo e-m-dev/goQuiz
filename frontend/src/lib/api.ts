@@ -21,6 +21,19 @@ export async function joinRoom(code: string, Name: string) {
     return res.json();
 }
 
+export async function leaveRoom(code: string, id: string) {
+    const safeCode = encodeURIComponent(code.trim().toUpperCase());
+    const res = await fetch(`http://localhost:8080/rooms/${safeCode}/leave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    if(!res.ok) {
+        throw new Error((await res.text()) || 'Failed to leave room');
+    }
+    return res.json();
+}
+
 export async function getRoom(code: string) {
     const safeCode = encodeURIComponent(code.trim().toUpperCase());
     const res = await fetch(`http://localhost:8080/rooms/${safeCode}`, {
