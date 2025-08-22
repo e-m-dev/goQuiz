@@ -19,6 +19,8 @@ const Lobby: React.FC= () => {
     const [playerName] = useLocalStorage("playerName", null);
     const [players, setPlayers] = useState<Player[]>([]);
 
+    const WS_URL = import.meta.env.VITE_WS_URL;
+
     useEffect(() => {
         if(!session) return;
 
@@ -35,7 +37,7 @@ const Lobby: React.FC= () => {
     useEffect(() => {
         if(!session) return;
         allowWS();
-        getWS(`ws://localhost:8080/ws/${session.roomCode}?playerId=${session.playerId}`);
+        getWS(`${WS_URL}/${session.roomCode}?playerId=${session.playerId}`);
     }, [session]);
 
     const handleLeave = () => {
