@@ -1,6 +1,6 @@
 import { useLocalStorage } from '@uidotdev/usehooks';
 import React, { useEffect, useState } from 'react';
-import { getRoom } from '../lib/api';
+import { getRoom, leaveRoom } from '../lib/api';
 import { allowWS, closeWS, getWS } from '@/lib/WS';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,7 @@ const Lobby: React.FC= () => {
     type Session = { roomCode: string, playerId: string };
     type Player = { id: string, name: string, host: boolean };
 
-    const [session] = useLocalStorage<Session | null>("session", null);
+    const [session, setSession] = useLocalStorage<Session | null>("session", null);
     const [playerName] = useLocalStorage("playerName", null);
     const [players, setPlayers] = useState<Player[]>([]);
 
@@ -39,6 +39,8 @@ const Lobby: React.FC= () => {
     }, [session]);
 
     const handleLeave = () => {
+        if(session) { leaveRoom(session.roomCode, session.playerId); };
+        setSession(null);
         closeWS(1000, "leave");
         navigate("/");
     };
