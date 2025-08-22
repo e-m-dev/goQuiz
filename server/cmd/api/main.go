@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
@@ -16,12 +18,18 @@ func main() {
 
 	r := internHttp.NewRouter(h)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	bind := getEnv("BIND_ADDR", "0.0.0.0")
+	port := getEnv("PORT", "8080")
+	addr := bind + ":" + port
 
-	log.Printf("server running on :%s", port)
-	if err := http.ListenAndServe("0.0.0.0:"+port, r); err != nil {
+	log.Printf("server running on %s", addr)
+	if err := http.ListenAndServe(addr, r); err != nil {
 	}
+}
+
+func getEnv(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
 }
