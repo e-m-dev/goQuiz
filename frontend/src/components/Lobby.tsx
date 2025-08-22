@@ -1,8 +1,9 @@
 import { useLocalStorage } from '@uidotdev/usehooks';
 import React, { useEffect, useState } from 'react';
 import { getRoom } from '../lib/api';
-import { getWS } from '@/lib/WS';
+import { allowWS, closeWS, getWS } from '@/lib/WS';
 import { Button } from './ui/button';
+import { useNavigate } from 'react-router-dom';
 /*
 import { Input } from "./ui/input";
 import { Label } from './ui/label';
@@ -10,6 +11,7 @@ import { Label } from './ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
 
 const Lobby: React.FC= () => {
+    const navigate = useNavigate();
     type Session = { roomCode: string, playerId: string };
     type Player = { id: string, name: string, host: boolean };
 
@@ -32,13 +34,14 @@ const Lobby: React.FC= () => {
 
     useEffect(() => {
         if(!session) return;
+        allowWS();
         getWS(`ws://localhost:8080/ws/${session.roomCode}?playerId=${session.playerId}`);
     }, [session]);
 
     const handleLeave = () => {
-
+        closeWS(1000, "leave");
+        navigate("/");
     };
-
 
     return (
         <div className='min-h-dvh grid place-items-center p-4'>
@@ -60,7 +63,7 @@ const Lobby: React.FC= () => {
                                         {player.name} (ID: {player.id}) {player.host ? 'Host' : ''}
                                     </li>
                                 ))}
-                                <Button variant={'destructive'} onClick={handleLeave}>Leave</Button>
+                                <li><Button variant={'destructive'} onClick={handleLeave}>Leave</Button></li>
                             </ul>
                         )}
                         

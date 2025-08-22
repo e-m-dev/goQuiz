@@ -1,6 +1,8 @@
 let sock: WebSocket | null = null;
+let userClosed: boolean = false;
 
 export function getWS(url: string) {
+    if(userClosed == true) return null;
     if(url.includes("undefined") || url.includes("null")) return null;
 
     if (sock && (sock.readyState == WebSocket.OPEN || sock.readyState == WebSocket.CONNECTING)) {
@@ -9,8 +11,19 @@ export function getWS(url: string) {
 
     sock = new WebSocket(url);
     sock.onopen = () => console.log("[WS] Open");
-    sock.onclose = (e) => console.log("[WS] Close", e.code);
+    sock.onclose = (e) => {
+        console.log("[WS] Close", e.code);
+        return;
+    };
     sock.onerror = (e) => console.error("[WS] Error", e);
     sock.onmessage = (m) => console.log("[WS] Message", m.data);
     return sock;
 }
+
+export function closeWS(code: number, reason: string) {
+    console.log("[WS] closeWS called readyState=", sock?.readyState);
+    userClosed = true;
+    sock?.close(code, reason); sock = null;
+}
+
+export function allowWS() { userClosed = false; }
