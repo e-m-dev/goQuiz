@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"nhooyr.io/websocket"
@@ -47,6 +48,7 @@ func (h *Hub) Remove(roomCode string, playerID string) {
 }
 
 func (h *Hub) Broadcast(roomCode string, payload []byte) {
+	log.Printf("BCAST room=%s bytes=%d", roomCode, len(payload))
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -86,14 +88,15 @@ func (c *Conn) WriteLoop(ctx context.Context) {
 
 func (c *Conn) ReadLoop(ctx context.Context, hub *Hub, roomCode string, playerID string) {
 	defer close(c.send)
+	defer hub.Remove(roomCode, playerID)
 	for {
-		typ, msg, err := c.ws.Read(ctx)
+		typ, _, err := c.ws.Read(ctx)
 		if err != nil {
 			return
 		}
 
 		if typ == websocket.MessageText {
-			hub.Broadcast(roomCode, msg)
+			//hub.Broadcast(roomCode, msg)
 		}
 	}
 }
