@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Input } from "./ui/input";
 import { Label } from './ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import BackButton from './ui/BackButton';
 
 const FormCreateRoom: React.FC = () => {
     const [roomCode, setRoomCode] = useState('');
@@ -29,6 +30,7 @@ const FormCreateRoom: React.FC = () => {
 
     return (
         <div className='min-h-dvh grid place-items-center p-4'>
+            <BackButton location='/' />
             <Card className='w-full max-w-sm'>
                 <CardHeader>
                     <CardTitle>Create Room</CardTitle>

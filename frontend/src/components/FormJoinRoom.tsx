@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import BackButton from "./ui/BackButton";
 
 const FormJoinRoom: React.FC = () => {
     const navigate = useNavigate();
@@ -30,6 +31,7 @@ const FormJoinRoom: React.FC = () => {
     }
     return(
         <div className='min-h-dvh grid place-items-center p-4'>
+            <BackButton location='/' />
             <Card className='w-full max-w-sm'>
                 <CardHeader>
                     <CardTitle>Join Game</CardTitle>

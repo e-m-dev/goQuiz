@@ -26,14 +26,14 @@ const Landing: React.FC = () => {
                     <form className="space-y-4">
                         <Input type="text" value={name} onChange={handleName} required />
                         <div className='flex justify-center gap-2'>
-                            <Button onClick={() => {
+                            <Button type='button' onClick={() => {
                                 if (!name.trim()) {
                                 alert("Please enter your name first!");
                                 return;
                                 }
                                 navigate("/create");
                             }}>Create Room</Button>
-                            <Button onClick={() => {
+                            <Button type='button' onClick={() => {
                                 if (!name.trim()) {
                                     alert("Please enter your name first!");
                                     return;
