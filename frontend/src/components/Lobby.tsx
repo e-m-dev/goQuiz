@@ -35,13 +35,25 @@ const Lobby: React.FC= () => {
                 console.log("failed to fetch room", err);
             }
         })();
-    }, [session]);
+    }, [session?.roomCode]);
 
     useEffect(() => {
         if(!session) return;
         allowWS();
-        getWS(`${WS_URL}/${session.roomCode}?playerId=${session.playerId}`);
-    }, [session]);
+
+        const sock = getWS(`${WS_URL}/${session.roomCode.toUpperCase()}?playerId=${session.playerId}`);
+        if(!sock) return;
+
+        const onMsg = (ev: MessageEvent) => {
+            try {
+                const data = JSON.parse(ev.data as string);
+                if(Array.isArray(data.players)) setPlayers(data.players);
+            } catch { /* Ignore */}
+        };
+        sock.addEventListener("message", onMsg);
+
+        return () => { sock.removeEventListener("message", onMsg) };
+    }, [session?.roomCode, session?.playerId]);
 
     const handleLeave = () => {
         if(session) { leaveRoom(session.roomCode, session.playerId); };
