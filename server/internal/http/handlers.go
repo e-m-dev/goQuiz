@@ -85,6 +85,7 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cannot join room", http.StatusNotFound)
 		return
 	}
+	room, _ = h.Ref.GetRoom(roomCode)
 
 	log.Printf("JOIN ok code=%s id=%s name=%s", roomCode, player.ID, player.Name)
 
