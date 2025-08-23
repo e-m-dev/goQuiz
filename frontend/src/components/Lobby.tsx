@@ -9,6 +9,9 @@ import { Input } from "./ui/input";
 import { Label } from './ui/label';
 */
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import ListRow from './ui/ListRow';
+import { Crown, UserRound } from 'lucide-react';
+import { displayName } from '@/lib/helpers';
 
 const Lobby: React.FC= () => {
     const navigate = useNavigate();
@@ -64,7 +67,11 @@ const Lobby: React.FC= () => {
                             <ul>
                                 {players.map((player) => (
                                     <li key={player.id}>
-                                        {player.name} {player.host ? 'Host' : ''}
+                                        <ListRow
+                                            left={<UserRound className='h-4 w-4' />}
+                                            text={displayName(player.name)}
+                                            right={player.host ? <Crown className='h-4 w-4' aria-label='Host' /> : null}
+                                        />
                                     </li>
                                 ))}
                                 <li><Button variant={'destructive'} onClick={handleLeave}>Leave</Button></li>
