@@ -2,12 +2,14 @@ package http
 
 import (
 	"encoding/json"
+	"goQuiz/server/internal/cfg"
 	"goQuiz/server/internal/store"
 	"goQuiz/server/internal/ws"
 	wsHub "goQuiz/server/internal/ws"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"nhooyr.io/websocket"
@@ -36,13 +38,24 @@ type lobby struct {
 
 func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	var req createRoomReq
+	start := time.Now()
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid req body", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> CREATE | err decode: %v", err)
+		}
 		return
 	}
 
+	if cfg.Debug {
+		log.Printf("Handler -> CREATE | start name = {%s}", strings.TrimSpace(req.Name))
+	}
+
 	room := h.Ref.CreateRoom(req.Name)
+	if cfg.Debug {
+		log.Printf("Handler -> CREATE | ok code = {%s} , players = {%d} , dur = {%s}", room.Code, len(room.Players), time.Since(start))
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(room)
@@ -50,12 +63,23 @@ func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetRoomHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	roomCode := chi.URLParam(r, "code")
+	if cfg.Debug {
+		log.Printf("Handler -> GET | extract code = {%s}", roomCode)
+	}
 
 	room, ok := h.Ref.GetRoom(roomCode)
 	if !ok {
 		http.Error(w, "invalid/room not found", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> GET | store get err")
+		}
 		return
+	}
+
+	if cfg.Debug {
+		log.Printf("Handler -> GET | ok code = {%s} , players = {%d} , dur = {%s}", room.Code, len(room.Players), time.Since(start))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -64,30 +88,47 @@ func (h *Handler) GetRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	roomCode := chi.URLParam(r, "code")
+	if cfg.Debug {
+		log.Printf("Handler -> JOIN | extract code = {%s}", roomCode)
+	}
 
 	room, ok := h.Ref.GetRoom(roomCode)
 	if !ok {
 		http.Error(w, "invalid/room not found on join", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> JOIN | store get err")
+		}
 		return
 	}
 
 	var req joinReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" {
 		http.Error(w, "name required", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> JOIN | err decode: %v", err)
+		}
 		return
 	}
 
-	log.Printf("JOIN start code=%s name=%s", roomCode, req.Name)
+	if cfg.Debug {
+		log.Printf("Handler -> JOIN | start code = {%s} , name = {%s}", roomCode, strings.TrimSpace(req.Name))
+	}
 
 	player, ok := h.Ref.JoinRoom(roomCode, req.Name)
 	if !ok {
 		http.Error(w, "cannot join room", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> JOIN | store join err")
+		}
 		return
 	}
 	room, _ = h.Ref.GetRoom(roomCode)
 
-	log.Printf("JOIN ok code=%s id=%s name=%s", roomCode, player.ID, player.Name)
+	if cfg.Debug {
+		log.Printf("Handler -> JOIN | ok code = {%s} , id = {%s} , name = {%s}, dur = {%s}", roomCode, player.ID, player.Name, time.Since(start))
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -97,6 +138,9 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	bytes, err := json.Marshal(lobby)
 	if err != nil {
 		http.Error(w, "failed to marshal lobby data", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> JOIN | json byte marshal err")
+		}
 		return
 	}
 
@@ -105,23 +149,37 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	roomCode := chi.URLParam(r, "code")
+	if cfg.Debug {
+		log.Printf("Handler -> LEAVE | extract code = {%s}", roomCode)
+	}
 
 	var req idReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "cannot leave room", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> LEAVE | err decode: %v", err)
+		}
 		return
 	}
 
-	log.Printf("LEAVE start code=%s id=%s", roomCode, req.ID)
+	if cfg.Debug {
+		log.Printf("Handler -> LEAVE | start code = {%s} , id = {%s}", roomCode, req.ID)
+	}
 
 	room, ok := h.Ref.DropPlayer(roomCode, req.ID)
 	if !ok {
 		http.Error(w, "failed to drop player", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> LEAVE | store drop err")
+		}
 		return
 	}
 
-	log.Printf("LEAVE ok code=%s remaining players=%d", roomCode, len(room.Players))
+	if cfg.Debug {
+		log.Printf("Handler -> LEAVE | ok code = {%s} , remPlayers = {%d} , dur = {%s}", roomCode, len(room.Players), time.Since(start))
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -131,6 +189,9 @@ func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 	bytes, err := json.Marshal(lobby)
 	if err != nil {
 		http.Error(w, "failed to marshal lobby data/bum drop player", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> LEAVE | json byte marshal err")
+		}
 		return
 	}
 
@@ -139,24 +200,38 @@ func (h *Handler) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) WSHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	roomCode := chi.URLParam(r, "code")
+	if cfg.Debug {
+		log.Printf("Handler -> WS | extract code = {%s}", roomCode)
+	}
 
 	playerID := r.URL.Query().Get("playerId")
 	if strings.TrimSpace(playerID) == "" {
 		http.Error(w, "missing playerId", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> WS | err bad playerID")
+		}
 		return
 	}
 
 	_, ok := h.Ref.GetRoom(roomCode)
 	if !ok {
 		http.Error(w, "room doesnt exist", http.StatusNotFound)
+		if cfg.Debug {
+			log.Printf("Handler -> WS | store get err")
+		}
 		return
 	}
 
 	wsConn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
-	if err != nil {
-		log.Printf("ws accept failed: &v", err)
+	if err != nil && cfg.Debug {
+		log.Printf("Handler -> WS | err accept failed: %v", err)
 		return
+	}
+
+	if cfg.Debug {
+		log.Printf("Handler -> WS | ok code = {%s} , playerID = {%s} , dur = {%s}", roomCode, playerID, time.Since(start))
 	}
 
 	c := ws.NewConn(wsConn)
