@@ -72,11 +72,11 @@ const Lobby: React.FC= () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className='flex justify-center gap-2 space-y-4'>
+                    <div className='w-full flex flex-col gap-4 text-left'>
                         {players.length === 0 ? (
                             <p>No player joined.</p>
                         ) : (
-                            <ul>
+                            <ul className='w-full space-y-2'>
                                 {players.map((player) => (
                                     <li key={player.id}>
                                         <ListRow
@@ -86,10 +86,9 @@ const Lobby: React.FC= () => {
                                         />
                                     </li>
                                 ))}
-                                <li><Button variant={'destructive'} onClick={handleLeave}>Leave</Button></li>
                             </ul>
                         )}
-                        
+                        <Button variant={'destructive'} onClick={handleLeave}>Leave</Button>
                     </div>
                 </CardContent>
             </Card>
