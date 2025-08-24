@@ -29,7 +29,6 @@ const FormCreateRoom: React.FC = () => {
             const data = await createRoom(roomName);
             console.log('Created Room:', data);
             setRoomCode(data.code);
-            //TODO: join and navigate to room
         } catch (error) {
             console.error(error);
             setCreating(false);
