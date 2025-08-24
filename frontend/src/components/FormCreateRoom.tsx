@@ -57,7 +57,7 @@ const FormCreateRoom: React.FC = () => {
         setCopied(true)
         setTimeout(() => {
             setCopied(false);
-        }, 10000);
+        }, 2000);
     }
 
     return (
