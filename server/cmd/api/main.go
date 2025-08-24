@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -26,8 +27,18 @@ func main() {
 
 	cfg.Debug = strings.EqualFold(os.Getenv("DEBUG"), "true")
 
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           r,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
 	log.Printf("server running on %s", addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
 	}
 
 }

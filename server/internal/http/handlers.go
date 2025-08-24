@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"goQuiz/server/internal/cfg"
 	"goQuiz/server/internal/store"
 	"goQuiz/server/internal/ws"
@@ -40,7 +41,17 @@ func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	var req createRoomReq
 	start := time.Now()
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1024)
+
+	var maxErr *http.MaxBytesError
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if errors.As(err, &maxErr) {
+			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			if cfg.Debug {
+				log.Printf("Handler -> CREATE | 413 payload too large {%dB}", maxErr.Limit)
+			}
+			return
+		}
 		http.Error(w, "invalid req body", http.StatusBadRequest)
 		if cfg.Debug {
 			log.Printf("Handler -> CREATE | err decode: %v", err)
@@ -90,6 +101,9 @@ func (h *Handler) GetRoomHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	roomCode := chi.URLParam(r, "code")
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1024)
+
 	if cfg.Debug {
 		log.Printf("Handler -> JOIN | extract code = {%s}", roomCode)
 	}
@@ -104,7 +118,15 @@ func (h *Handler) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req joinReq
+	var maxErr *http.MaxBytesError
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Name) == "" {
+		if errors.As(err, &maxErr) {
+			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			if cfg.Debug {
+				log.Printf("Handler -> JOIN | 413 payload too large {%dB}", maxErr.Limit)
+			}
+			return
+		}
 		http.Error(w, "name required", http.StatusBadRequest)
 		if cfg.Debug {
 			log.Printf("Handler -> JOIN | err decode: %v", err)
