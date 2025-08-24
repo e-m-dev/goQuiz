@@ -13,28 +13,56 @@ import (
 )
 
 var rlMu sync.Mutex
-var rl = map[string]*rate.Limiter{}
+var rlCreate = map[string]*rate.Limiter{}
+var rlJoin = map[string]*rate.Limiter{}
 
-func getLimiter(ip string) *rate.Limiter {
+func getCreateLimiter(ip string) *rate.Limiter {
 	rlMu.Lock()
 	defer rlMu.Unlock()
 
-	lim, ok := rl[ip]
+	lim, ok := rlCreate[ip]
 	if !ok {
 		lim = rate.NewLimiter(rate.Every(10*time.Second), 3)
-		rl[ip] = lim
+		rlCreate[ip] = lim
+	}
+	return lim
+}
+
+func getJoinLimiter(ip string) *rate.Limiter {
+	rlMu.Lock()
+	defer rlMu.Unlock()
+
+	lim, ok := rlJoin[ip]
+	if !ok {
+		lim = rate.NewLimiter(rate.Limit(5), 20)
+		rlJoin[ip] = lim
 	}
 	return lim
 }
 
 func rateLimitCreate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := clientIP(r)
-		if !getLimiter(ip).Allow() {
+		ip := strings.TrimSpace(clientIP(r))
+		if !getCreateLimiter(ip).Allow() {
 			w.Header().Set("Retry-After", "10")
 			w.WriteHeader(http.StatusTooManyRequests)
 			if cfg.Debug {
-				log.Printf("Limiter -> RLCreate | ip = {%s} , allow = false")
+				log.Printf("Limiter -> RLCreate | ip = {%s} , allow = false", ip)
+			}
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func rateLimitJoin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := strings.TrimSpace(clientIP(r))
+		if !getJoinLimiter(ip).Allow() {
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusTooManyRequests)
+			if cfg.Debug {
+				log.Printf("Limiter -> RLJoin | ip = {%s} , allow = false", ip)
 			}
 			return
 		}
@@ -50,6 +78,9 @@ func clientIP(r *http.Request) string {
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	if host == "" {
 		return r.RemoteAddr
+	}
+	if host == "::1" {
+		return "127.0.0.1"
 	}
 	return host
 }
