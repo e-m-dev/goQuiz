@@ -27,6 +27,9 @@ func main() {
 
 	cfg.Debug = strings.EqualFold(os.Getenv("DEBUG"), "true")
 
+	cfg.DBPath = getEnv("DB_PATH", "./data/q.db")
+	log.Printf("DB Path Found -> %s", cfg.DBPath)
+
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           r,
