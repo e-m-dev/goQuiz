@@ -26,6 +26,10 @@ server/*.db
 server/*.sqlite
 server/*.sqlite3
 server/*.db-journal
+server/data/*.db
+server/data/*.sqlite
+server/data/*.sqlite3
+server/data/*.db-journal
 
 # --- OS / Editor files ---
 .DS_Store
