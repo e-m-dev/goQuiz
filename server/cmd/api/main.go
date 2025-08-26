@@ -28,7 +28,18 @@ func main() {
 	cfg.Debug = strings.EqualFold(os.Getenv("DEBUG"), "true")
 
 	cfg.DBPath = getEnv("DB_PATH", "./data/q.db")
-	log.Printf("DB Path Found -> %s", cfg.DBPath)
+	db, err := store.Open(cfg.DBPath)
+	if err != nil {
+		log.Fatalf("MAIN -> DB | Couldnt open DB (CRITICAL: %v), exiting...", err)
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
+	defer db.Close()
+	err = store.Migrate(db)
+	if err != nil {
+		log.Fatalf("MAIN -> DB | Couldnt migrate DB (CRITICAL: %v), exiting...", err)
+	}
 
 	srv := &http.Server{
 		Addr:              addr,
