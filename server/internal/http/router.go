@@ -37,6 +37,7 @@ func NewRouter(h *Handler) *chi.Mux {
 	r.With(rateLimitJoin).Post("/rooms/{code}/join", h.JoinRoomHandler)
 	r.Post("/rooms/{code}/leave", h.LeaveRoomHandler)
 	r.Get("/ws/{code}", h.WSHandler)
+	r.Post("/questions", h.CreateQuestionHandler)
 
 	return r
 }
