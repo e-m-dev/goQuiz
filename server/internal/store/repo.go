@@ -111,18 +111,133 @@ func (r *SQLiteQuestions) GetRandom(ctx context.Context, limit int, category *st
 }
 
 func (r *SQLiteQuestions) Insert(ctx context.Context, q Question) (int64, error) {
-	return 1, nil
+	if err := q.Validate(); err != nil {
+		log.Printf("REPO -> INSERT | Invalid Question")
+		return 0, err
+	}
+
+	optsJSON, err := json.Marshal(q.Options)
+	if err != nil {
+		log.Printf("REPO -> INSERT | Error marshaling options")
+		return 0, err
+	}
+
+	query := `
+		INSERT INTO questions (prompt, options_json, correct_index, category, difficulty)
+		VALUES (?, ?, ?, ?, ?)`
+
+	res, err := r.db.ExecContext(ctx, query, q.Prompt, string(optsJSON), q.CorrectIndex, valNil(q.Category), valNil(q.Difficulty))
+	if err != nil {
+		log.Printf("REPO -> INSERT | Error executing query")
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+
+	return id, err
 }
 
 func (r *SQLiteQuestions) GetByID(ctx context.Context, id int64) (Question, error) {
-	return Question{}, nil
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	var rowID int64
+	var prompt, optJSON string
+	var correct int
+	var cat, diff sql.NullString
+	var created time.Time
+
+	query := `
+		SELECT id, prompt, options_json, correct_index, category, difficulty, created_at
+		FROM questions WHERE id = ?`
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&rowID, &prompt, &optJSON, &correct, &cat, &diff, &created)
+	if err != nil {
+		log.Printf("REPO -> GETBYID | Error executing query")
+		return Question{}, err
+	}
+
+	var opts []string
+	if err := json.Unmarshal([]byte(optJSON), &opts); err != nil {
+		log.Printf("REPO -> GETBYID | Error unmarshalling options")
+		return Question{}, err
+	}
+
+	ques := Question{
+		ID:           rowID,
+		Prompt:       prompt,
+		Options:      opts,
+		CorrectIndex: correct,
+		Category:     nsp(cat),
+		Difficulty:   nsp(diff),
+		CreatedAt:    created,
+	}
+	return ques, nil
 }
 
 func (r *SQLiteQuestions) UpdateByID(ctx context.Context, id int64, q Question) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	err := q.Validate()
+	if err != nil {
+		log.Printf("REPO -> UPDATEBYID | Invalid Question object")
+		return err
+	}
+
+	optsJSON, err := json.Marshal(q.Options)
+	if err != nil {
+		log.Printf("REPO -> UPDATEBYID | Error marshaling options")
+		return err
+	}
+
+	query := `
+		UPDATE questions
+		SET prompt = ?, options_json = ?, correct_index = ?, category = ?, difficulty = ?
+		WHERE id = ?`
+
+	res, err := r.db.ExecContext(ctx, query, q.Prompt, string(optsJSON), q.CorrectIndex, valNil(q.Category), valNil(q.Difficulty), id)
+	if err != nil {
+		log.Printf("REPO -> UPDATEBYID | Error executing query")
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("REPO -> UPDATEBYID | Error rows affected")
+		return err
+	}
+
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+
 	return nil
 }
 
 func (r *SQLiteQuestions) DeleteByID(ctx context.Context, id int64) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	query := `
+		DELETE FROM questions WHERE id = ?`
+
+	res, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		log.Printf("REPO -> DELETEBYID | Error executing query")
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("REPO -> DELETEBYID | Error rows affected")
+		return err
+	}
+
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+
 	return nil
 }
 
@@ -131,4 +246,11 @@ func nsp(ns sql.NullString) *string {
 		return &ns.String
 	}
 	return nil
+}
+
+func valNil(s *string) any {
+	if s == nil {
+		return nil
+	}
+	return *s
 }
