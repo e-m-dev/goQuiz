@@ -19,12 +19,6 @@ func main() {
 	hub := wshub.NewHub()
 	h := &internHttp.Handler{Ref: s, Hub: hub}
 
-	r := internHttp.NewRouter(h)
-
-	bind := getEnv("BIND_ADDR", "0.0.0.0")
-	port := getEnv("PORT", "8080")
-	addr := bind + ":" + port
-
 	cfg.Debug = strings.EqualFold(os.Getenv("DEBUG"), "true")
 
 	cfg.DBPath = getEnv("DB_PATH", "./data/q.db")
@@ -40,6 +34,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("MAIN -> DB | Couldnt migrate DB (CRITICAL: %v), exiting...", err)
 	}
+
+	qrepo := store.NewQuestionsRepo(db)
+	h.Q = qrepo
+
+	r := internHttp.NewRouter(h)
+
+	bind := getEnv("BIND_ADDR", "0.0.0.0")
+	port := getEnv("PORT", "8080")
+	addr := bind + ":" + port
 
 	srv := &http.Server{
 		Addr:              addr,
