@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"goQuiz/server/internal/cfg"
@@ -19,6 +20,7 @@ import (
 type Handler struct {
 	Ref *store.Store
 	Hub *wsHub.Hub
+	Q   store.QuestionsRepo
 }
 
 type createRoomReq struct {
@@ -35,6 +37,14 @@ type idReq struct {
 
 type lobby struct {
 	Players []store.Player `json:"players"`
+}
+
+type CreateQuestionReq struct {
+	Prompt       string   `json:"prompt"`
+	Options      []string `json:"options"`
+	CorrectIndex int      `json:"correctIndex"`
+	Category     *string  `json:"category,omitempty"`
+	Difficulty   *string  `json:"difficulty,omitempty"`
 }
 
 func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
@@ -264,5 +274,90 @@ func (h *Handler) WSHandler(w http.ResponseWriter, r *http.Request) {
 	c.ReadLoop(ctx, h.Hub, roomCode, playerID)
 
 	h.Hub.Remove(roomCode, playerID)
+
+}
+
+func (h *Handler) CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+
+	if cfg.Debug {
+		log.Printf("Handler -> CREATEQ | start")
+	}
+
+	var maxErr *http.MaxBytesError
+	var req CreateQuestionReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if errors.As(err, &maxErr) {
+			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			if cfg.Debug {
+				log.Printf("Handler -> CREATEQ | 413 payload too large {%dB}", maxErr.Limit)
+			}
+			return
+		}
+		http.Error(w, "invalid req body", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> CREATEQ | err decode: %v", err)
+		}
+		return
+	}
+
+	p := strings.TrimSpace(req.Prompt)
+
+	opts := make([]string, 0, len(req.Options))
+	for _, o := range req.Options {
+		o = strings.TrimSpace(o)
+		if o != "" {
+			opts = append(opts, o)
+		}
+	}
+
+	var cat, diff *string
+	if req.Category != nil && strings.TrimSpace(*req.Category) != "" {
+		s := strings.TrimSpace(*req.Category)
+		cat = &s
+	}
+	if req.Difficulty != nil && strings.TrimSpace(*req.Difficulty) != "" {
+		s := strings.TrimSpace(*req.Difficulty)
+		diff = &s
+	}
+
+	q := store.Question{
+		Prompt:       p,
+		Options:      opts,
+		CorrectIndex: req.CorrectIndex,
+		Category:     cat,
+		Difficulty:   diff,
+	}
+
+	if err := q.Validate(); err != nil {
+		http.Error(w, " invalid question: "+err.Error(), http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> CREATEQ | invalid question passed")
+		}
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	id, err := h.Q.Insert(ctx, q)
+	if err != nil {
+		http.Error(w, "failed to insert question", http.StatusInternalServerError)
+		if cfg.Debug {
+			log.Printf("Handler -> CREATEQ | Insert reach, failed")
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(map[string]any{"id": id})
+
+	if cfg.Debug {
+		log.Printf("Handler -> CREATEQ | ok dur = {%s}", time.Since(start))
+	}
 
 }
