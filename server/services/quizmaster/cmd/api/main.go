@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +14,12 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
+type questionReq struct {
+	Count      int
+	Category   *string
+	Difficulty *string
+}
+
 func main() {
 	godotenv.Load(".env")
 	r := chi.NewRouter()
@@ -20,7 +28,7 @@ func main() {
 	port := os.Getenv("QM_PORT")
 	addr := bind + ":" + port
 
-	token := os.Getenv("QM_API")
+	token := os.Getenv("QM_TOKEN")
 	if token == "" {
 		log.Fatal("API Token Missing")
 	}
@@ -28,9 +36,7 @@ func main() {
 	r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
-	r.With(bearerAuth(token)).Post("/v1/questions/generate", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok gen"))
-	})
+	r.With(bearerAuth(token)).Post("/v1/questions/generate", GenerateQHandler)
 
 	srv := &http.Server{
 		Addr:              addr,
@@ -46,6 +52,64 @@ func main() {
 		log.Fatal(err)
 	}
 
+}
+
+func GenerateQHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	r.Body = http.MaxBytesReader(w, r.Body, 8192)
+
+	var maxErr *http.MaxBytesError
+	var req questionReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if errors.As(err, &maxErr) {
+			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		http.Error(w, "invalid req", http.StatusBadRequest)
+		return
+	}
+
+	req.Count = clampCount(req.Count)
+	req.Category = cleanPtr(req.Category)
+	req.Difficulty = cleanPtr(req.Difficulty)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok":         true,
+		"count":      req.Count,
+		"category":   req.Category,
+		"difficulty": req.Difficulty,
+	})
+
+	log.Printf("QuizMaster Generate echo count {%d} questions in {%s}", req.Count, time.Since(start))
+
+}
+
+func clampCount(original int) int {
+	if original <= 50 && original >= 1 {
+		return original
+	}
+
+	if original > 50 {
+		return 50
+	}
+
+	return 1
+
+}
+
+func cleanPtr(p *string) *string {
+	if p == nil {
+		return nil
+	}
+	s := strings.TrimSpace(*p)
+
+	if s == "" {
+		return nil
+	}
+
+	return &s
 }
 
 func bearerAuth(expected string) func(http.Handler) http.Handler {
