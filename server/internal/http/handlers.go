@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"goQuiz/server/internal/cfg"
+	"goQuiz/server/internal/clients"
 	"goQuiz/server/internal/store"
 	"goQuiz/server/internal/ws"
 	wsHub "goQuiz/server/internal/ws"
@@ -21,6 +22,7 @@ type Handler struct {
 	Ref *store.Store
 	Hub *wsHub.Hub
 	Q   store.QuestionsRepo
+	QM  *clients.Client
 }
 
 type createRoomReq struct {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"goQuiz/server/internal/cfg"
+	"goQuiz/server/internal/clients"
 	internHttp "goQuiz/server/internal/http"
 	"goQuiz/server/internal/store"
 	wshub "goQuiz/server/internal/ws"
@@ -37,6 +38,9 @@ func main() {
 
 	qrepo := store.NewQuestionsRepo(db)
 	h.Q = qrepo
+	qmUrl := getEnv("QM_CLIENT", "localhost:8081")
+	qmToken := getEnv("QM_TOKEN", "secret-key")
+	h.QM = clients.New(qmUrl, qmToken)
 
 	r := internHttp.NewRouter(h)
 
