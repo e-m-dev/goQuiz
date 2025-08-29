@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +23,17 @@ type questionReq struct {
 	Count      int
 	Category   *string
 	Difficulty *string
+}
+
+type genReq struct {
+	Contents []struct {
+		Parts []struct {
+			Text string `json:"text"`
+		} `json:"parts"`
+	} `json:"contents"`
+	GenerateConfig struct {
+		ResponseMIMEType string `json:"response_mime_type"`
+	} `json:"generationConfig"`
 }
 
 func main() {
@@ -86,6 +102,77 @@ func GenerateQHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func callQuizMaster(ctx context.Context, model string, key string, count int, cat *string, diff *string) (jsonString string, err error) {
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
+
+	prompt := fmt.Sprintf(`Output ONLY JSON:
+		{ "questions":[{ "prompt": string, "options": [string], "correctIndex": number,
+		"category": %s, "difficulty": %s, "source": "quizmaster:gemini" }] }
+
+		Rules: exactly %d questions; 4 options per question; short prompts; no trick Qs; correctIndex index of answer.
+		No extra text, no markdown. Strictly JSON only.`, valOrNull(cat), valOrNull(diff), count)
+
+	reqBody := genReq{
+		Contents: []struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		}{
+			{Parts: []struct {
+				Text string `json:"text"`
+			}{{Text: prompt}}},
+		},
+	}
+	reqBody.GenerateConfig.ResponseMIMEType = "application/json"
+
+	b, err := json.Marshal(reqBody)
+	if err != nil {
+		log.Printf("Failed to marshal req body")
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
+	if err != nil {
+		log.Printf("API communication construct failed")
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", key)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("Failed to send req")
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("gem error, code: %d, resp: %s", resp.StatusCode, string(b))
+	}
+
+	var gr struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&gr); err != nil {
+		log.Printf("failed to decode resp body into structure")
+		return "", err
+	}
+
+	if len(gr.Candidates) == 0 || len(gr.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("empty response")
+	}
+
+	return gr.Candidates[0].Content.Parts[0].Text, nil
+}
+
 func clampCount(original int) int {
 	if original <= 50 && original >= 1 {
 		return original
@@ -110,6 +197,14 @@ func cleanPtr(p *string) *string {
 	}
 
 	return &s
+}
+
+func valOrNull(s *string) string {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return "null"
+	}
+
+	return strconv.Quote(strings.TrimSpace(*s))
 }
 
 func bearerAuth(expected string) func(http.Handler) http.Handler {
