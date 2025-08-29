@@ -85,18 +85,33 @@ func GenerateQHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	model := os.Getenv("QM_MODEL")
+	key := os.Getenv("QM_API")
+	if model == "" || key == "" {
+		http.Error(w, "failed to load resources", http.StatusInternalServerError)
+		return
+	}
+
 	req.Count = clampCount(req.Count)
 	req.Category = cleanPtr(req.Category)
 	req.Difficulty = cleanPtr(req.Difficulty)
 
+	deadline := 10 + req.Count
+	dynamicTimeout := time.Duration(deadline) * time.Second
+
+	ctx, cancel := context.WithTimeout(r.Context(), dynamicTimeout)
+	defer cancel()
+
+	raw, err := callQuizMaster(ctx, model, key, req.Count, req.Category, req.Difficulty)
+	if err != nil {
+		http.Error(w, "upstream error", http.StatusBadGateway)
+		return
+	}
+
+	//log.Printf("%s", raw)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"ok":         true,
-		"count":      req.Count,
-		"category":   req.Category,
-		"difficulty": req.Difficulty,
-	})
+	w.Write([]byte(raw))
 
 	log.Printf("QuizMaster Generate echo count {%d} questions in {%s}", req.Count, time.Since(start))
 
@@ -107,10 +122,11 @@ func callQuizMaster(ctx context.Context, model string, key string, count int, ca
 
 	prompt := fmt.Sprintf(`Output ONLY JSON:
 		{ "questions":[{ "prompt": string, "options": [string], "correctIndex": number,
-		"category": %s, "difficulty": %s, "source": "quizmaster:gemini" }] }
+		"category": %s, "difficulty": %s }] }
 
 		Rules: exactly %d questions; 4 options per question; short prompts; no trick Qs; correctIndex index of answer.
-		No extra text, no markdown. Strictly JSON only.`, valOrNull(cat), valOrNull(diff), count)
+		Provide great variance in questions asked, dont exclusively ask same-old questions. 
+		No extra text, no markdown. Strictly JSON only. Do not deviate from Category or Diffculty IF provided`, valOrNull(cat), valOrNull(diff), count)
 
 	reqBody := genReq{
 		Contents: []struct {
