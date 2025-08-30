@@ -401,6 +401,9 @@ func (h *Handler) GenerateQuestionsHandler(w http.ResponseWriter, r *http.Reques
 	qs, err := h.QM.Fetch(ctx, req.Count, req.Category, req.Difficulty)
 	if err != nil {
 		http.Error(w, "upstream error", http.StatusBadGateway)
+		if cfg.Debug {
+			log.Printf("Handler -> GENQ | %v", err)
+		}
 		return
 	}
 
