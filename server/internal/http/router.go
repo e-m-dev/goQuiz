@@ -38,6 +38,7 @@ func NewRouter(h *Handler) *chi.Mux {
 	r.Post("/rooms/{code}/leave", h.LeaveRoomHandler)
 	r.Get("/ws/{code}", h.WSHandler)
 	r.Post("/questions", h.CreateQuestionHandler)
+	r.Post("/questions/gen", h.GenerateQuestionsHandler)
 
 	return r
 }

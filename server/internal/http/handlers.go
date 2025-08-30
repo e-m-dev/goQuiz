@@ -49,6 +49,12 @@ type CreateQuestionReq struct {
 	Difficulty   *string  `json:"difficulty,omitempty"`
 }
 
+type GenerateQuestionReq struct {
+	Count      int     `json:"count"`
+	Category   *string `json:"category,omitempty"`
+	Difficulty *string `json:"difficulty,omitempty"`
+}
+
 func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	var req createRoomReq
 	start := time.Now()
@@ -362,4 +368,81 @@ func (h *Handler) CreateQuestionHandler(w http.ResponseWriter, r *http.Request) 
 		log.Printf("Handler -> CREATEQ | ok dur = {%s}", time.Since(start))
 	}
 
+}
+
+func (h *Handler) GenerateQuestionsHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+
+	if cfg.Debug {
+		log.Printf("Handler -> GENQ | start")
+	}
+
+	var maxErr *http.MaxBytesError
+	var req GenerateQuestionReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if errors.As(err, &maxErr) {
+			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			if cfg.Debug {
+				log.Printf("Handler -> GENQ | Payload too large")
+			}
+			return
+		}
+		http.Error(w, "failed to decode req", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> GENQ | failed to decode req")
+		}
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
+	defer cancel()
+
+	qs, err := h.QM.Fetch(ctx, req.Count, req.Category, req.Difficulty)
+	if err != nil {
+		http.Error(w, "upstream error", http.StatusBadGateway)
+		return
+	}
+
+	inserted, rejected := 0, 0
+
+	for _, q := range qs {
+		q.Prompt = strings.TrimSpace(q.Prompt)
+		clean := make([]string, 0, len(q.Options))
+		for _, o := range q.Options {
+			if s := strings.TrimSpace(o); s != "" {
+				clean = append(clean, s)
+			}
+		}
+		q.Options = clean
+
+		if err := q.Validate(); err != nil {
+			rejected++
+			continue
+		}
+
+		ictx, cancel := context.WithTimeout(r.Context(), 500*time.Millisecond)
+		_, err := h.Q.Insert(ictx, q)
+		cancel()
+		if err != nil {
+			rejected++
+			continue
+		}
+
+		inserted++
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(map[string]any{
+		"requested": req.Count,
+		"received":  len(qs),
+		"inserted":  inserted,
+		"rejected":  rejected,
+	})
+
+	if cfg.Debug {
+		log.Printf("Handler -> GENQ | ok dur = {%s}", time.Since(start))
+	}
 }
