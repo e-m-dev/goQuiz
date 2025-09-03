@@ -11,6 +11,7 @@ import (
 	wsHub "goQuiz/server/internal/ws"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,6 +54,15 @@ type GenerateQuestionReq struct {
 	Count      int     `json:"count"`
 	Category   *string `json:"category,omitempty"`
 	Difficulty *string `json:"difficulty,omitempty"`
+}
+
+type qDTO struct {
+	ID           int64    `json:"id"`
+	Prompt       string   `json:"prompt"`
+	Options      []string `json:"options"`
+	CorrectIndex int      `json:"correctIndex"`
+	Category     *string  `json:"categort"`
+	Difficulty   *string  `json:"difficult"`
 }
 
 func (h *Handler) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
@@ -448,4 +458,75 @@ func (h *Handler) GenerateQuestionsHandler(w http.ResponseWriter, r *http.Reques
 	if cfg.Debug {
 		log.Printf("Handler -> GENQ | ok dur = {%s}", time.Since(start))
 	}
+}
+
+func (h *Handler) FetchRandomQuestionsHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	q := r.URL.Query()
+
+	if cfg.Debug {
+		log.Printf("Handler -> FetchRND | start")
+	}
+
+	countStr := q.Get("count")
+	catStr := strings.TrimSpace(q.Get("category"))
+	difStr := strings.TrimSpace(q.Get("difficulty"))
+
+	count := 10 // def
+	if n, err := strconv.Atoi(countStr); err == nil {
+		count = n
+	}
+
+	if count > 50 {
+		count = 50
+	}
+	if count < 1 {
+		count = 1
+	}
+
+	var cat, diff *string
+	if catStr != "" {
+		cat = &catStr
+	}
+	if difStr != "" {
+		diff = &difStr
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	qs, err := h.Q.GetRandom(ctx, count, cat, diff)
+	if err != nil {
+		http.Error(w, "failed to fetch random selection", http.StatusBadRequest)
+		if cfg.Debug {
+			log.Printf("Handler -> FetchRND | error, %v", err)
+		}
+		return
+	}
+
+	out := make([]qDTO, 0, len(qs))
+	for _, q := range qs {
+		out = append(out, qDTO{
+			ID:           q.ID,
+			Prompt:       q.Prompt,
+			Options:      q.Options,
+			CorrectIndex: q.CorrectIndex,
+			Category:     q.Category,
+			Difficulty:   q.Difficulty,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(map[string]any{
+		"requested": count,
+		"returned":  len(out),
+		"questions": out,
+	})
+
+	if cfg.Debug {
+		log.Printf("Handler -> FetchRND | ok dur = {%s}", time.Since(start))
+	}
+
 }

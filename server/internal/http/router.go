@@ -39,6 +39,7 @@ func NewRouter(h *Handler) *chi.Mux {
 	r.Get("/ws/{code}", h.WSHandler)
 	r.Post("/questions", h.CreateQuestionHandler)
 	r.Post("/questions/gen", h.GenerateQuestionsHandler)
+	r.Get("/questions/rnd", h.FetchRandomQuestionsHandler)
 
 	return r
 }
